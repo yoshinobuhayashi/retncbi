@@ -1,0 +1,41 @@
+#!/usr/bin/env ruby
+
+require 'optparse'
+require 'open-uri'
+
+t = Time.now.to_s.gsub(/-|:/, "").sub(/(\d+) (\d+) .+/, '\1'+"-"+'\2')
+outfile = "ncbi#{t}.fasta"
+db = "protein"
+id = []
+
+opt = OptionParser.new
+opt.on('-k Camma-delimited IDs or FILEs', '[required]') do |v|
+  v.split(",").each do |kw|
+    if File.exist?(kw)
+      File.open(kw).each {|line| id << line.chomp}
+    else
+      id << kw
+    end
+  end
+end
+opt.on('-d DATABASE', '[default: protein]') {|v| db = v}
+opt.on('-o FILE', '[default: ncbi#{Time.now}.fasta]') {|v| outfile = v}
+opt.on('-h', '--help', 'Show this message') { puts opt ; exit }
+opt.parse!(ARGV)
+
+h = 'http://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?'
+s = 'db=<database>&id=<query>&rettype=fasta'
+t = s.sub(/<database>/, db)
+
+of = open(outfile, "w")
+
+id.each do |i|
+  q = t.sub(/<query>/, i)
+  begin
+    open(h+q) {|u| of.puts u.read}
+  rescue
+    puts "FAILED: #{i}"
+  end
+end
+
+of.close
